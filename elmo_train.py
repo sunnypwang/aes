@@ -29,8 +29,8 @@ MODEL_NAME = 'elmo'
 
 for p in prompts:
 
-    train_df = data_utils.load_data(p, 'train')[:10]
-    val_df = data_utils.load_data(p, 'val')[:10]
+    train_df = data_utils.load_data(p, 'train')
+    val_df = data_utils.load_data(p, 'val')
     # test_df = data_utils.load_data(p, 'test')
 
     print(train_df.shape)
