@@ -27,8 +27,8 @@ class EvaluateCallback(Callback):
 def evaluate(y_true, y_pred, model_name, prompt, epoch):
     qwk = QWK(y_true, y_pred)
     pred_path = utils.mkpath('pred')
-    with open(os.path.join(pred_path, 'qwk_{}_{}.txt'.format(model_name, prompt)), 'a+') as f:
-        f.write('{} {}'.format(epoch, qwk))
+    with open(os.path.join(pred_path, 'qwk_{}_{}.csv'.format(model_name, prompt)), 'a+') as f:
+        f.write('{}, {}\n'.format(epoch, qwk))
 
 
 def QWK(y_true, y_pred):
