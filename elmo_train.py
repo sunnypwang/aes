@@ -22,7 +22,7 @@ if args.prompt == -1:
 print(args)
 print('PROMPT :', prompts)
 
-BATCH_SIZE = 1
+BATCH_SIZE = 5
 MODEL_NAME = 'elmo'
 
 for p in prompts:
