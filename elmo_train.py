@@ -2,6 +2,7 @@ import sys
 import argparse
 from keras.callbacks import *
 import os
+import numpy as np
 
 import utils
 import data_utils
@@ -36,6 +37,8 @@ for p in prompts:
     print(val_df.shape)
     # print(test_df.shape)
 
+    from keras import backend as K
+    K.clear_session()
     model = models.build_elmo_model_full(p)
 
     weight_path = utils.mkpath('weight')
