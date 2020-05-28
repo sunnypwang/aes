@@ -39,7 +39,7 @@ for p in prompts:
 
     from keras import backend as K
     K.clear_session()
-    model = models.build_elmo_model_full(p)
+    model = models.build_elmo_model_full(p, use_mask=True)
 
     weight_path = utils.mkpath('weight')
     last_weight, last_epoch = utils.get_last_epoch(weight_path, MODEL_NAME, p)
