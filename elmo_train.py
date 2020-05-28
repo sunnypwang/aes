@@ -25,7 +25,7 @@ print(args)
 print('PROMPT :', prompts)
 
 BATCH_SIZE = args.bs
-MODEL_NAME = 'elmo'
+MODEL_NAME = 'elmo-fw'
 
 for p in prompts:
 
