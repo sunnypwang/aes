@@ -29,7 +29,7 @@ MODEL_NAME = 'elmo-fw'
 
 for p in prompts:
 
-    weight_path = utils.mkpath('weight')
+    weight_path = utils.mkpath('weight/{}/{}'.format(MODEL_NAME, p))
     last_weight, last_epoch = utils.get_last_epoch(weight_path, MODEL_NAME, p)
     # move on to next prompt if epoch not greater than last one saved
     if args.epoch <= last_epoch:
