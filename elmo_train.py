@@ -29,6 +29,12 @@ MODEL_NAME = 'elmo-fw'
 
 for p in prompts:
 
+    weight_path = utils.mkpath('weight')
+    last_weight, last_epoch = utils.get_last_epoch(weight_path, MODEL_NAME, p)
+    # move on to next prompt if epoch not greater than last one saved
+    if args.epoch <= last_epoch:
+        continue
+
     train_df = data_utils.load_data(p, 'train')
     val_df = data_utils.load_data(p, 'val')
     # test_df = data_utils.load_data(p, 'test')
@@ -41,11 +47,9 @@ for p in prompts:
     K.clear_session()
     model = models.build_elmo_model_full(p, use_mask=True)
 
-    weight_path = utils.mkpath('weight')
-    last_weight, last_epoch = utils.get_last_epoch(weight_path, MODEL_NAME, p)
     if last_weight:
+        print('Loading weight :', last_weight)
         model.load_weights(last_weight)
-    assert args.epoch > last_epoch
 
     train_gen = data_utils.elmo_gen(p, train_df, batch_size=BATCH_SIZE)
     val_gen = data_utils.elmo_gen(p, val_df, batch_size=BATCH_SIZE)
