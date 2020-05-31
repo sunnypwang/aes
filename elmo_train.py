@@ -14,6 +14,8 @@ parser.add_argument('prompt', type=int, help='-1 for all prompts')
 parser.add_argument('epoch', type=int)
 parser.add_argument('--bs', type=int, default=5)
 parser.add_argument('--fold', type=int, default=1)
+parser.add_argument('--ft', type=bool, default=False,
+                    help='enable fine-tuning ELMo (elno_trainable)')
 parser.add_argument('--gen-augment', type=bool, default=False)
 args = parser.parse_args()
 
@@ -21,13 +23,18 @@ prompts = [args.prompt]
 if args.prompt == -1:
     prompts = [1, 2, 3, 4, 5, 6, 7, 8]
 
-print(args)
-print('PROMPT :', prompts)
 
 BATCH_SIZE = args.bs
 MODEL_NAME = 'elmo-fw'
 
+print(args)
+print('ALL PROMPTS :', prompts)
+print('BATCH SIZE :', BATCH_SIZE)
+print('MODEL_NAME :', MODEL_NAME)
+print('-------')
+
 for p in prompts:
+    print('PROMPT :', p)
 
     weight_path = utils.mkpath('weight/{}/{}'.format(MODEL_NAME, p))
     last_weight, last_epoch = utils.get_last_epoch(weight_path, MODEL_NAME, p)
@@ -45,7 +52,8 @@ for p in prompts:
 
     from keras import backend as K
     K.clear_session()
-    model = models.build_elmo_model_full(p, use_mask=True)
+    model = models.build_elmo_model_full(
+        p,  elmo_trainable=args.ft, only_elmo=False, use_mask=True)
 
     if last_weight:
         print('Loading weight :', last_weight)
