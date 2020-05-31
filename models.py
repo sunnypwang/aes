@@ -24,21 +24,28 @@ class ElmoEmbeddingLayer(Layer):
             scope="^{}_module/.*".format(self.name))
         super(ElmoEmbeddingLayer, self).build(input_shape)
 
-    def call(self, x, mask=None):
-        x = K.squeeze(K.cast(x, tf.string), axis=1)
+    def compute_elmo(self, x):
         emb = self.elmo(x,
-                        as_dict=True,
-                        signature='default',
-                        )['default']
-        mask = self.compute_mask(x)
-        result = tf.where(mask, emb, tf.zeros_like(emb))
-        return result
+                        as_dict=False,
+                        signature='default')
+        msk = K.not_equal(x, PAD_SENT_TOKEN)
+        return tf.where(msk, emb, tf.zeros_like(emb))
 
-    def compute_mask(self, inputs, mask=None):
-        return K.not_equal(inputs, PAD_SENT_TOKEN)
+    def call(self, inputs, mask=None):
+        print(inputs.shape)
+        sqz_inputs = tf.squeeze(K.cast(inputs, tf.string), axis=2)
+
+        print(sqz_inputs.shape)
+        embs = tf.map_fn(self.compute_elmo, sqz_inputs, dtype=tf.float32)
+
+        print(embs.shape)
+        return embs
+
+    # def compute_mask(self, inputs, mask=None):
+    #     return K.not_equal(inputs, PAD_SENT_TOKEN)
 
     def compute_output_shape(self, input_shape):
-        return (input_shape[0], self.dimensions)
+        return (input_shape[0], input_shape[1], self.dimensions)
 
 
 def softmax_wrapper(x):
@@ -53,16 +60,19 @@ def permute(x):
     return tf.transpose(x, perm=[1, 0, 2])
 
 
-def build_elmo_model_full(prompt, trainable=False, only_elmo=False, use_mask=False, lstm_units=100):
+def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mask=True, lstm_units=100):
     maxlen = MAXLEN[prompt]
-    elmo = ElmoEmbeddingLayer(trainable=trainable)
+    elmo = ElmoEmbeddingLayer(trainable=elmo_trainable)
 
     input_text = Input(shape=(maxlen, 1), dtype=tf.string)
-    perm = Lambda(permute)(input_text)
+    #    batch_shape=(batch_size, maxlen, 1))
+    # perm = Lambda(permute)(input_text)
     # perm = TimeDistributed(Masking(mask_value=''))(perm)
     # embedding = ElmoEmbeddingLayer(trainable=trainable)(input_text)
-    embedding = TimeDistributed(elmo)(perm)
-    embedding = Lambda(permute)(embedding)
+    # embedding = TimeDistributed(elmo)(perm)
+    embedding = elmo(input_text)
+    # embedding = Flatten()(embedding)
+    # embedding = Lambda(permute)(embedding)
     if use_mask:
         embedding = Masking(mask_value=0.0)(embedding)
     if not only_elmo:
