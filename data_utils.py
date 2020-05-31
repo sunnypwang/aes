@@ -9,7 +9,9 @@ import utils
 augment_set = ['no_art', 'no_conj', 'add_and_0.1', 'swap_0.05',
                'no_first_sent', 'no_last_sent', 'no_longest_sent', 'reverse_sent']
 
-MAXLEN = [-1, 70, 88, 22, 23, 24, 20, 67, 97]
+
+# MAXLEN = [-1, 70, 88, 22, 23, 24, 20, 67, 97]     # Max
+MAXLEN = [-1, 47, 44, 14, 10, 15, 16, 32, 79]       # 1.5IQR Max
 
 PAD_SENT_TOKEN = ''
 
@@ -92,17 +94,18 @@ def sentenize(text):
 #             MAX_LEN[prompt] = len(essay)
 
 
-def prepare_elmo_features(df, prompt, features='essay', labels='domain1_score', x_only=False, y_only=False, norm=True):
+def prepare_elmo_features(df, prompt, features='essay', labels='domain1_score', x_only=False, pad=True, y_only=False, norm=True):
     assert not (x_only and y_only)
     if not y_only:
-        X_tmp = []
+        X = []
         for essay in df[features]:
-            X_tmp.append(sentenize(essay))
-        X_tmp = np.array(X_tmp)
-        X_pad = pad_sequences(X_tmp, maxlen=MAXLEN[prompt], dtype=object,
-                              padding='post', value=PAD_SENT_TOKEN)[:, :, None]
+            X.append(sentenize(essay))
+        X = np.array(X)
+        if pad:
+            X = pad_sequences(X, maxlen=MAXLEN[prompt], dtype=object,
+                              padding='post', truncating='post', value=PAD_SENT_TOKEN)[:, :, None]
         if x_only:
-            return X_pad
+            return X
     if not x_only:
         Y = np.array(df[labels].tolist())
 
@@ -112,7 +115,7 @@ def prepare_elmo_features(df, prompt, features='essay', labels='domain1_score', 
         if y_only:
             return Y
 
-    return X_pad, Y
+    return X, Y
 
 
 def load_data(prompt, suffix=None, fold=1):
@@ -125,9 +128,10 @@ def load_data(prompt, suffix=None, fold=1):
     return data
 
 
-def load_elmo_features(prompt, suffix=None, fold=1):
+def load_elmo_features(prompt, suffix=None, fold=1, x_only=False, pad=True, y_only=False, norm=True):
     data = load_data(prompt, suffix, fold)
-    X, Y = prepare_elmo_features(data, prompt)
+    X, Y = prepare_elmo_features(
+        data, prompt, x_only=x_only, pad=pad, y_only=y_only, norm=norm)
     return X, Y
 
 
