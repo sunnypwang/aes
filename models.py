@@ -11,9 +11,10 @@ from data_utils import MAXLEN
 
 class ElmoEmbeddingLayer(Layer):
     # ElmoEmbeddingLayer based on https://github.com/strongio/keras-elmo/blob/master/Elmo%20Keras.ipynb
-    def __init__(self, **kwargs):
+    def __init__(self, maxlen, **kwargs):
         self.dimensions = 1024
         self.trainable = True
+        self.maxlen = maxlen
         super(ElmoEmbeddingLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
@@ -25,24 +26,25 @@ class ElmoEmbeddingLayer(Layer):
         super(ElmoEmbeddingLayer, self).build(input_shape)
 
     def compute_elmo(self, x):
+
+        msk = K.not_equal(x, PAD_SENT_TOKEN)    # (maxlen,)
+        x = tf.boolean_mask(x, msk)             # (?, )
         emb = self.elmo(x,
                         as_dict=False,
                         signature='default')
-        msk = K.not_equal(x, PAD_SENT_TOKEN)
-        return tf.where(msk, emb, tf.zeros_like(emb))
+        emb.set_shape((None, 1024))             # (?, 1024)
+        s = tf.shape(emb)
+        paddings = [[0, self.maxlen - s[0]], [0, 0]]
+        # paddings = tf.Print(paddings, [paddings], '--- padding : ')
+        pad = tf.pad(emb, paddings, 'CONSTANT', constant_values=0.)
+        pad = tf.ensure_shape(pad, (self.maxlen, 1024))  # (maxlen, 1024)
+        return pad
 
     def call(self, inputs, mask=None):
         print(inputs.shape)
         sqz_inputs = tf.squeeze(K.cast(inputs, tf.string), axis=2)
-
-        print(sqz_inputs.shape)
         embs = tf.map_fn(self.compute_elmo, sqz_inputs, dtype=tf.float32)
-
-        print(embs.shape)
         return embs
-
-    # def compute_mask(self, inputs, mask=None):
-    #     return K.not_equal(inputs, PAD_SENT_TOKEN)
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0], input_shape[1], self.dimensions)
@@ -62,17 +64,10 @@ def permute(x):
 
 def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mask=True, lstm_units=100):
     maxlen = MAXLEN[prompt]
-    elmo = ElmoEmbeddingLayer(trainable=elmo_trainable)
+    elmo = ElmoEmbeddingLayer(maxlen, trainable=elmo_trainable)
 
     input_text = Input(shape=(maxlen, 1), dtype=tf.string)
-    #    batch_shape=(batch_size, maxlen, 1))
-    # perm = Lambda(permute)(input_text)
-    # perm = TimeDistributed(Masking(mask_value=''))(perm)
-    # embedding = ElmoEmbeddingLayer(trainable=trainable)(input_text)
-    # embedding = TimeDistributed(elmo)(perm)
     embedding = elmo(input_text)
-    # embedding = Flatten()(embedding)
-    # embedding = Lambda(permute)(embedding)
     if use_mask:
         embedding = Masking(mask_value=0.0)(embedding)
     if not only_elmo:
