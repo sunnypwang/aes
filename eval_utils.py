@@ -14,20 +14,22 @@ class EvaluateCallback(Callback):
         self.batch_size = batch_size
         self.steps = np.ceil(len(self.val_data) / self.batch_size)
         self.y_true = prepare_elmo_features(
-            self.val_data, self.prompt, y_only=True, norm=False)
+            self.val_data, self.prompt, y_only=True)
 
     def on_epoch_end(self, epoch, logs):
         y_pred = self.model.predict_generator(
             elmo_gen(self.prompt, self.val_data, self.batch_size, test=True), steps=self.steps, verbose=1)
-        y_pred = rescale_to_int(y_pred, self.prompt)
 
-        evaluate(self.y_true, y_pred, self.model_name, self.prompt, epoch)
+        generate_qwk(self.y_true, y_pred, self.model_name,
+                     self.prompt, epoch, 'val')
 
 
-def evaluate(y_true, y_pred, model_name, prompt, epoch):
+def generate_qwk(y_true, y_pred, model_name, prompt, epoch, suffix=''):
+    y_true = rescale_to_int(y_true, prompt)
+    y_pred = rescale_to_int(y_pred, prompt)
     qwk = QWK(y_true, y_pred)
-    pred_path = utils.mkpath('pred')
-    with open(os.path.join(pred_path, 'qwk_{}_{}.csv'.format(model_name, prompt)), 'a+') as f:
+    pred_path = utils.mkpath('pred/{}'.format(model_name))
+    with open(os.path.join(pred_path, 'qwk_{}_{}.csv'.format(prompt, suffix)), 'a+') as f:
         f.write('{}, {}\n'.format(epoch, qwk))
 
 
