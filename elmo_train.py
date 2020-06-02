@@ -37,7 +37,7 @@ for p in prompts:
     print('PROMPT :', p)
 
     weight_path = utils.mkpath('weight/{}/{}'.format(MODEL_NAME, p))
-    last_weight, last_epoch = utils.get_last_epoch(weight_path, MODEL_NAME, p)
+    last_weight, last_epoch = utils.get_last_epoch(weight_path)
     # move on to next prompt if epoch not greater than last one saved
     if args.epoch <= last_epoch:
         continue
