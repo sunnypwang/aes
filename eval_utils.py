@@ -36,7 +36,7 @@ def generate_qwk(prompt, model_name, y_true, y_pred, epoch, suffix=''):
         f.write('{}, {}\n'.format(epoch, qwk))
 
 
-def generate_score(prompt, model_name, y_true, y_pred, aug_pred, test_df):
+def generate_score(prompt, model_name, epoch, y_true, y_pred, aug_pred, test_df):
     path = utils.mkpath('pred/{}'.format(model_name))
 
     df = pd.DataFrame()
@@ -46,12 +46,12 @@ def generate_score(prompt, model_name, y_true, y_pred, aug_pred, test_df):
     df['test'] = y_pred
     for key in aug_pred:
         df['test_' + key] = aug_pred[key]
-    df.to_csv(os.path.join(path, 'score_{}.tsv'.format(prompt)),
+    df.to_csv(os.path.join(path, 'score_{}_{}.tsv'.format(prompt, epoch)),
               sep='\t', index=False)
     return df
 
 
-def generate_robustness(prompt, model_name, y_true, y_pred, aug_pred):
+def generate_robustness(prompt, model_name, epoch, y_true, y_pred, aug_pred):
     path = utils.mkpath('pred/{}'.format(model_name))
 
     # y_true = rescale_to_int(y_true, prompt)
@@ -61,7 +61,7 @@ def generate_robustness(prompt, model_name, y_true, y_pred, aug_pred):
     N = len(y_pred) * len(aug_pred)
     print('N :', N)
 
-    with open(os.path.join(path, 'robustness_{}.csv'.format(prompt)), 'w+') as f:
+    with open(os.path.join(path, 'robustness_{}_{}.csv'.format(prompt, epoch)), 'w+') as f:
         f.write('augment,worse_raw,better_raw,worse_resolved,better_resolved\n')
         for key in aug_pred:
             aug_pred_int[key] = rescale_to_int(aug_pred[key], prompt)
