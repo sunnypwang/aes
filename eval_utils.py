@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import os
 from keras.callbacks import *
 from sklearn.metrics import cohen_kappa_score
@@ -33,6 +34,47 @@ def generate_qwk(prompt, model_name, y_true, y_pred, epoch, suffix=''):
 
     with open(os.path.join(path, 'qwk_{}_{}.csv'.format(prompt, suffix)), 'a+') as f:
         f.write('{}, {}\n'.format(epoch, qwk))
+
+
+def generate_score(prompt, model_name, y_true, y_pred, aug_pred, test_df):
+    path = utils.mkpath('pred/{}'.format(model_name))
+
+    df = pd.DataFrame()
+    df['essay_id'] = test_df['essay_id']
+    df['essay_set'] = test_df['essay_set']
+    df['domain1_score'] = y_true
+    df['test'] = y_pred
+    for key in aug_pred:
+        df['test_' + key] = aug_pred[key]
+    df.to_csv(os.path.join(path, 'score_{}.tsv'.format(prompt)),
+              sep='\t', index=False)
+    return df
+
+
+def generate_robustness(prompt, model_name, y_true, y_pred, aug_pred):
+    path = utils.mkpath('pred/{}'.format(model_name))
+
+    # y_true = rescale_to_int(y_true, prompt)
+    y_pred_int = rescale_to_int(y_pred, prompt)
+    aug_pred_int = {}
+    wr_t, br_t, w_t, b_t = 0, 0, 0, 0
+    N = len(y_pred) * len(aug_pred)
+    print('N :', N)
+
+    with open(os.path.join(path, 'robustness_{}.csv'.format(prompt)), 'w+') as f:
+        f.write('augment,worse_raw,better_raw,worse_resolved,better_resolved\n')
+        for key in aug_pred:
+            aug_pred_int[key] = rescale_to_int(aug_pred[key], prompt)
+
+            wr, br, w, b = robustness(
+                y_pred, aug_pred[key], y_pred_int, aug_pred_int[key])
+            wr_t += wr
+            br_t += br
+            w_t += w
+            b_t += b
+            f.write('{},{},{},{},{}\n'.format(key, wr, br, w, b))
+        f.write('sum,{},{},{},{}\n'.format(wr_t, br_t, w_t, b_t))
+        f.write('avg,{},{},{},{}\n'.format(wr_t/N, br_t/N, w_t/N, b_t/N))
 
 
 def QWK(y_true, y_pred):
