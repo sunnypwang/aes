@@ -19,3 +19,11 @@ def get_last_epoch(weight_path):
     last_epoch = get_epoch(last_weight) if last_weight else 0
     return last_weight, last_epoch
 
+
+def get_weight_at_epoch(weight_path, epoch):
+    weights = glob.glob(os.path.join(
+        weight_path, 'weight.*.h5'))
+    for w in weights:
+        if get_epoch(w) == epoch:
+            return w
+    return None
