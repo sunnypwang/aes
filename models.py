@@ -62,7 +62,7 @@ def permute(x):
     return tf.transpose(x, perm=[1, 0, 2])
 
 
-def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mask=True, lstm_units=100):
+def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mask=True, lstm_units=100, summary=True):
     maxlen = MAXLEN[prompt]
     elmo = ElmoEmbeddingLayer(maxlen, trainable=elmo_trainable)
 
@@ -82,7 +82,8 @@ def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mas
     else:
         model = Model(inputs=input_text, outputs=embedding)
     model.compile(loss='mse', optimizer='rmsprop')
-    model.summary()
+    if summary:
+        model.summary()
     return model
 
 
