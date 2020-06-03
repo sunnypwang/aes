@@ -12,6 +12,7 @@ import models
 parser = argparse.ArgumentParser()
 parser.add_argument('prompt', type=int, help='-1 for all prompts')
 parser.add_argument('epoch', type=int)
+parser.add_argument('name', type=str, help='model name for path handling')
 parser.add_argument('--bs', type=int, default=5)
 parser.add_argument('--fold', type=int, default=1)
 parser.add_argument('--ft', type=bool, default=False,
@@ -26,7 +27,7 @@ if args.prompt == -1:
 
 EPOCH = args.epoch
 BATCH_SIZE = args.bs
-MODEL_NAME = 'elmo-fw'
+MODEL_NAME = args.name
 
 print(args)
 print('ALL PROMPTS :', prompts)
@@ -49,7 +50,8 @@ for p in prompts:
 
     from keras import backend as K
     K.clear_session()
-    model = models.build_elmo_model_full(p,  only_elmo=False, use_mask=True)
+    model = models.build_elmo_model_full(
+        p,  only_elmo=False, use_mask=True, summary=False)
 
     print('Loading weight :', weight)
     model.load_weights(weight)
@@ -80,6 +82,7 @@ for p in prompts:
                 aug_gen, steps=aug_steps, verbose=1)
 
         eval_utils.generate_score(
-            p, MODEL_NAME, y_true, y_pred, aug_pred, test_df)
+            p, MODEL_NAME, EPOCH, y_true, y_pred, aug_pred, test_df)
 
-        eval_utils.generate_robustness(p, MODEL_NAME, y_true, y_pred, aug_pred)
+        eval_utils.generate_robustness(
+            p, MODEL_NAME, EPOCH, y_true, y_pred, aug_pred)
