@@ -20,16 +20,18 @@ class EvaluateCallback(Callback):
         y_pred = self.model.predict_generator(
             elmo_gen(self.prompt, self.val_data, self.batch_size, test=True), steps=self.steps, verbose=1)
 
-        generate_qwk(self.y_true, y_pred, self.model_name,
-                     self.prompt, epoch, 'val')
+        generate_qwk(self.prompt, self.model_name,
+                     self.y_true, y_pred, epoch, 'val')
 
 
-def generate_qwk(y_true, y_pred, model_name, prompt, epoch, suffix=''):
+def generate_qwk(prompt, model_name, y_true, y_pred, epoch, suffix=''):
+    path = utils.mkpath('pred/{}'.format(model_name))
+
     y_true = rescale_to_int(y_true, prompt)
     y_pred = rescale_to_int(y_pred, prompt)
     qwk = QWK(y_true, y_pred)
-    pred_path = utils.mkpath('pred/{}'.format(model_name))
-    with open(os.path.join(pred_path, 'qwk_{}_{}.csv'.format(prompt, suffix)), 'a+') as f:
+
+    with open(os.path.join(path, 'qwk_{}_{}.csv'.format(prompt, suffix)), 'a+') as f:
         f.write('{}, {}\n'.format(epoch, qwk))
 
 
