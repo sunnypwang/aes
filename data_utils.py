@@ -140,9 +140,11 @@ def load_elmo_features(prompt, suffix=None, fold=1, **kwargs):
         data, prompt, **kwargs)
 
 
-def elmo_gen(prompt, df, batch_size=1, test=False, **kwargs):
+def elmo_gen(prompt, df, batch_size=1, test=False, shuffle=True, **kwargs):
     data = df.copy()
     while True:
+        if shuffle:
+            data = data.sample(frac=1).reset_index(drop=True)
         for i in range(0, len(data), batch_size):
             j = min(len(data), i+batch_size)
             if test:
