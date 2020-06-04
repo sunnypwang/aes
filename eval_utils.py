@@ -19,7 +19,7 @@ class EvaluateCallback(Callback):
 
     def on_epoch_end(self, epoch, logs):
         y_pred = self.model.predict_generator(
-            elmo_gen(self.prompt, self.val_data, self.batch_size, test=True), steps=self.steps, verbose=1)
+            elmo_gen(self.prompt, self.val_data, self.batch_size, test=True, shuffle=False), steps=self.steps, verbose=1)
 
         generate_qwk(self.prompt, self.model_name,
                      self.y_true, y_pred, epoch+1, 'val')
