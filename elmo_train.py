@@ -60,7 +60,8 @@ for p in prompts:
         model.load_weights(last_weight)
 
     train_gen = data_utils.elmo_gen(p, train_df, batch_size=BATCH_SIZE)
-    val_gen = data_utils.elmo_gen(p, val_df, batch_size=BATCH_SIZE)
+    val_gen = data_utils.elmo_gen(
+        p, val_df, batch_size=BATCH_SIZE, shuffle=False)
 
     train_steps = np.ceil(len(train_df) / BATCH_SIZE)
     val_steps = np.ceil(len(val_df) / BATCH_SIZE)
