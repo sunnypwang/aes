@@ -53,7 +53,7 @@ for p in prompts:
     from keras import backend as K
     K.clear_session()
     model = models.build_elmo_model_full(
-        p,  elmo_trainable=args.ft, only_elmo=False, use_mask=False)
+        p, elmo_trainable=args.ft, only_elmo=False, use_mask=True, lstm_units=50)
 
     if last_weight:
         print('Loading weight :', last_weight)
