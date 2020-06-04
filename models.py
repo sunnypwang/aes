@@ -71,7 +71,8 @@ def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mas
     if use_mask:
         embedding = Masking(mask_value=0.0)(embedding)
     if not only_elmo:
-        H = LSTM(lstm_units, return_sequences=True, name='lstm')(embedding)
+        H = CuDNNGRU(lstm_units, return_sequences=True,
+                     stateful=False, name='gru')(embedding)
         A_hat = Dense(lstm_units, activation='tanh', name='Attention_mat')(H)
         a = Dense(1, use_bias=False, activation=softmax_wrapper,
                   name='Attention_vec')(A_hat)
