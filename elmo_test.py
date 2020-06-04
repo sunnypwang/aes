@@ -56,7 +56,8 @@ for p in prompts:
     print('Loading weight :', weight)
     model.load_weights(weight)
 
-    test_gen = data_utils.elmo_gen(p, test_df, batch_size=BATCH_SIZE)
+    test_gen = data_utils.elmo_gen(
+        p, test_df, batch_size=BATCH_SIZE, test=True, shuffle=False)
     test_steps = np.ceil(len(test_df) / BATCH_SIZE)
 
     print(test_gen, test_steps)
