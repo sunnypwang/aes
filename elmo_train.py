@@ -25,7 +25,7 @@ if args.prompt == -1:
 
 
 BATCH_SIZE = args.bs
-MODEL_NAME = 'elmo-fw-gru'
+MODEL_NAME = 'elmo-fw-gru50'
 
 print(args)
 print('ALL PROMPTS :', prompts)
