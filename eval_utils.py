@@ -77,6 +77,50 @@ def generate_robustness(prompt, model_name, epoch, y_true, y_pred, aug_pred):
         f.write('avg,{},{},{},{}\n'.format(wr_t/N, br_t/N, w_t/N, b_t/N))
 
 
+def generate_summary(prompts, model_name, epoch):
+    assert len(prompts) == 8
+    # number of essay in test set
+    length = [-1, 179, 180, 173, 177, 181, 180, 157, 73]
+    path = utils.mkpath('pred/{}'.format(model_name))
+
+    with open(os.path.join(path, 'summary_{}.csv'.format(epoch)), 'w+') as f:
+        f.write('{} epoch {}\n\n'.format(model_name, epoch))
+        f.write('QWK\n')
+        qwk_avg = 0
+        for p in prompts:
+            qwk_df = pd.read_csv(os.path.join(path, 'qwk_{}_test.csv'.format(
+                p)), header=None, names=['epoch', 'qwk'])
+            qwk = qwk_df[qwk_df['epoch'] == epoch].values[-1, -1]
+            f.write('{}\t{}\n'.format(p, qwk))
+            qwk_avg += qwk
+
+        f.write('\nRobustness per prompt\n')
+        r_avg = 0
+        r_aug_avg = 0
+        for p in prompts:
+            robustness_df = pd.read_csv(os.path.join(
+                path, 'robustness_{}_{}.csv'.format(p, epoch)))
+            r = (robustness_df['worse_resolved'] -
+                 robustness_df['better_resolved']).values[-1]
+            f.write('{}\t{}\n'.format(p, r))
+            r_avg += r
+
+            r_aug = (robustness_df['worse_resolved'] -
+                     robustness_df['better_resolved']).values[:-2]/length[p]
+            r_aug_avg += r_aug
+
+        f.write('\nRobustness per augment\n')
+        r_aug_avg /= 8
+        for a, r in zip(robustness_df['augment'][:-2], r_aug_avg):
+            f.write('{}\t{}\n'.format(a, r))
+
+        f.write('\n')
+        f.write('QWK Average:\t{}\n'.format(qwk_avg / 8))
+        f.write('Robustness Average:\t{}\n'.format(r_avg / 8))
+        f.write('Robustness Average:\t{}\n'.format(r_aug_avg.mean()))
+    print('summary generated!')
+
+
 def QWK(y_true, y_pred):
     return cohen_kappa_score(y_true, y_pred, weights='quadratic')
 

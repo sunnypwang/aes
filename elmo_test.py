@@ -87,3 +87,6 @@ for p in prompts:
 
         eval_utils.generate_robustness(
             p, MODEL_NAME, EPOCH, y_true, y_pred, aug_pred)
+
+if len(prompts) == 8:
+    eval_utils.generate_summary(prompts, MODEL_NAME, EPOCH)
