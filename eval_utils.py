@@ -83,7 +83,7 @@ def generate_summary(prompts, model_name, epoch):
     length = [-1, 179, 180, 173, 177, 181, 180, 157, 73]
     path = utils.mkpath('pred/{}'.format(model_name))
 
-    with open(os.path.join(path, 'summary_{}.csv'.format(epoch)), 'w+') as f:
+    with open(os.path.join(path, 'summary_{}.txt'.format(epoch)), 'w+') as f:
         f.write('{} epoch {}\n\n'.format(model_name, epoch))
         f.write('QWK\n')
         qwk_avg = 0
