@@ -6,7 +6,7 @@ from keras.layers import *
 from keras.activations import softmax
 from keras.initializers import Constant
 from data_utils import PAD_SENT_TOKEN
-from data_utils import MAXLEN
+from data_utils import MAXLEN, MAXWORDLEN
 
 
 class ElmoEmbeddingLayer(Layer):
@@ -157,10 +157,11 @@ def get_model(prompt, fold, show_summary=False):
 
 def build_glove_model(prompt, vocab_size, emb_matrix, maxwords=50, emb_dim=50, drop_rate=0.2, glove_trainable=False, summary=True):
     maxlen = MAXLEN[prompt]
-
-    input_word = Input(shape=(maxlen * maxwords,), dtype='int32')
+    maxwords = MAXWORDLEN
+    input_word = Input(shape=(maxlen, maxwords,), dtype='int32')
+    x = Reshape((maxlen * maxwords,))(input_word)
     emb = Embedding(input_dim=vocab_size, output_dim=emb_dim,
-                    trainable=glove_trainable, mask_zero=True, name='glove')(input_word)
+                    trainable=glove_trainable, mask_zero=True, name='glove')(x)
     x = ZeroMaskedEntries()(emb)
     x = Dropout(drop_rate)(x)
     x = Reshape((maxlen, maxwords, emb_dim))(x)
