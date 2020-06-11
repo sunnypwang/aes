@@ -49,7 +49,7 @@ for p in prompts:
     print(val_df.shape)
     # print(test_df.shape)
 
-    vocab = data_utils.get_vocab(train_df, p)
+    vocab = data_utils.get_vocab(p, train_df)
     glove_path = 'glove/glove.6B.50d.txt'
     emb_matrix = data_utils.load_glove_embedding(glove_path, vocab)
 

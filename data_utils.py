@@ -115,7 +115,7 @@ def load_glove_embedding(path, vocab, emb_dim=50):
     return emb_matrix
 
 
-def get_vocab(df, prompt, length=4000, features='essay'):
+def get_vocab(prompt, df=None, length=4000, features='essay'):
     vocab_path = utils.mkpath('vocab')
     file_path = os.path.join(vocab_path, '{}.vocab'.format(prompt))
     if os.path.isfile(file_path):
@@ -191,7 +191,7 @@ def prepare_glove_features(df, prompt, vocab=None, features='essay', labels='dom
     return X, Y
 
 
-def prepare_elmo_features(df, prompt, features='essay', labels='domain1_score', x_only=False, pad=True, y_only=False, norm=True, augment=None, rnd=None):
+def prepare_elmo_features(df, prompt, vocab=None, features='essay', labels='domain1_score', x_only=False, pad=True, y_only=False, norm=True, augment=None, rnd=None):
     assert not (x_only and y_only)
     if not y_only:
         X = []
@@ -284,7 +284,7 @@ def augment_gen(model_name, prompt, test_df, vocab=None, batch_size=1, augment=N
             j = min(len(data), i+batch_size)
 
             x = prepare_features(model_name,
-                                 data[i:j], prompt, vocab, x_only=True, augment=augment, rnd=rnd, **kwargs)
+                                 df=data[i:j], prompt=prompt, vocab=vocab, x_only=True, augment=augment, rnd=rnd, **kwargs)
             yield x
 
 
