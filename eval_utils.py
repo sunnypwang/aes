@@ -4,22 +4,23 @@ import os
 from keras.callbacks import *
 from sklearn.metrics import cohen_kappa_score
 import utils
-from data_utils import elmo_gen, prepare_elmo_features, rescale_to_int
+from data_utils import gen, prepare_features, rescale_to_int
 
 
 class EvaluateCallback(Callback):
-    def __init__(self, prompt, val_data, model_name, batch_size=5):
+    def __init__(self, prompt, val_data, model_name, vocab=None, batch_size=5):
         self.prompt = prompt
         self.val_data = val_data
         self.model_name = model_name
+        self.vocab = vocab
         self.batch_size = batch_size
-        self.steps = np.ceil(len(self.val_data) / self.batch_size)
-        self.y_true = prepare_elmo_features(
-            self.val_data, self.prompt, y_only=True)
+        self.steps = np.ceil(len(val_data) / batch_size)
+        self.y_true = prepare_features(model_name,
+                                       df=val_data, prompt=prompt, y_only=True)
 
     def on_epoch_end(self, epoch, logs):
         y_pred = self.model.predict_generator(
-            elmo_gen(self.prompt, self.val_data, self.batch_size, test=True, shuffle=False), steps=self.steps, verbose=1)
+            gen(self.model_name, self.prompt, self.val_data, self.vocab, self.batch_size, test=True, shuffle=False), steps=self.steps, verbose=1)
 
         generate_qwk(self.prompt, self.model_name,
                      self.y_true, y_pred, epoch+1, 'val')
