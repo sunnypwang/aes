@@ -61,7 +61,7 @@ for p in prompts:
         glove_path = 'glove/glove.6B.50d.txt'
         emb_matrix = data_utils.load_glove_embedding(glove_path, vocab)
         model = models.build_glove_model(
-            p, len(vocab), emb_matrix, glove_trainable=False)
+            p, len(vocab), emb_matrix, glove_trainable=False, summary=False)
 
     print('Loading weight :', weight)
     model.load_weights(weight)
