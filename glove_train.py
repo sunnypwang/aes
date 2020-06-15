@@ -13,9 +13,11 @@ import models
 parser = argparse.ArgumentParser()
 parser.add_argument('prompt', type=int, help='-1 for all prompts')
 parser.add_argument('epoch', type=int)
-parser.add_argument('--bs', type=int, default=5)
+parser.add_argument('name', type=str, help='model name for path handling')
+parser.add_argument('--bs', type=int, default=10)
 parser.add_argument('--fold', type=int, default=1)
-parser.add_argument('--gen-augment', type=bool, default=False)
+parser.add_argument('--ft', type=bool, default=False,
+                    help='enable fine-tuning')
 args = parser.parse_args()
 
 prompts = [args.prompt]
@@ -24,7 +26,7 @@ if args.prompt == -1:
 
 
 BATCH_SIZE = args.bs
-MODEL_NAME = 'glove-fw'
+MODEL_NAME = args.name
 
 print(args)
 print('ALL PROMPTS :', prompts)
@@ -55,7 +57,7 @@ for p in prompts:
 
     K.clear_session()
     model = models.build_glove_model(
-        p, len(vocab), emb_matrix, glove_trainable=False)
+        p, len(vocab), emb_matrix, glove_trainable=args.ft)
 
     if last_weight:
         print('Loading weight :', last_weight)
