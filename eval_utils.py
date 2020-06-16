@@ -135,11 +135,22 @@ def generate_summary_best(model_name):
         f.write('epoch\tprompt\tqwk\n')
         qwk_avg = 0
         for p in prompts:
-            qwk_df = pd.read_csv(os.path.join(path, 'qwk_{}_test.csv'.format(
+            qwk_df = pd.read_csv(os.path.join(path, 'qwk_{}_val.csv'.format(
                 p)), header=None, names=['epoch', 'qwk'])
             max_idx = qwk_df['qwk'].idxmax()
-            ep, qwk = qwk_df.iloc[max_idx].values
-            best_ep[p] = int(ep)
+            best_ep[p] = int(qwk_df.iloc[max_idx].values[0])
+
+            qwk_df = pd.read_csv(os.path.join(path, 'qwk_{}_test.csv'.format(
+                p)), header=None, names=['epoch', 'qwk'])
+
+            try:
+                tmp = qwk_df[qwk_df['epoch'] == best_ep[p]].values
+                # in case of multiple runs of same epoch, pick one with the best QWK
+                ep, qwk = tmp[tmp.argmax(axis=0)[-1]]
+            except:
+                raise Exception(
+                    'Error: epoch {} of prompt {} not found in test'.format(best_ep[p], p))
+
             f.write('{}\t{}\t{}\n'.format(best_ep[p], p, qwk))
             qwk_avg += qwk
 
