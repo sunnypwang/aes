@@ -17,6 +17,8 @@ parser.add_argument('--bs', type=int, default=10)
 parser.add_argument('--fold', type=int, default=1)
 parser.add_argument('--ft', type=bool, default=False,
                     help='enable fine-tuning')
+parser.add_argument('--re', type=int, default=100,
+                    help='recurrent size (elmo)')
 args = parser.parse_args()
 
 prompts = [args.prompt]
@@ -53,7 +55,7 @@ for p in prompts:
     from keras import backend as K
     K.clear_session()
     model = models.build_elmo_model_full(
-        p,  elmo_trainable=args.ft, only_elmo=False, use_mask=True, lstm_units=100)
+        p,  elmo_trainable=args.ft, only_elmo=False, use_mask=True, lstm_units=args.re)
 
     if last_weight:
         print('Loading weight :', last_weight)
