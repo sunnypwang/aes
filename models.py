@@ -82,7 +82,7 @@ def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mas
         model = Model(inputs=input_text, outputs=score)
     else:
         model = Model(inputs=input_text, outputs=embedding)
-    model.compile(loss='mse', optimizer='rmsprop')
+    model.compile(loss='mse', optimizer='adam')
     if summary:
         model.summary()
     return model
