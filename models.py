@@ -1,12 +1,13 @@
+import numpy as np
 import tensorflow_hub as hub
 import tensorflow as tf
 from keras import backend as K
 from keras.models import Model, model_from_yaml
 from keras.layers import *
 from keras.activations import softmax
-
+from keras.initializers import Constant
 from data_utils import PAD_SENT_TOKEN
-from data_utils import MAXLEN
+from data_utils import MAXLEN, MAXWORDLEN
 
 
 class ElmoEmbeddingLayer(Layer):
@@ -153,3 +154,110 @@ def get_model(prompt, fold, show_summary=False):
     if show_summary:
         model.summary()
     return model
+
+
+def build_glove_model(prompt, vocab_size, emb_matrix, maxwords=50, emb_dim=50, drop_rate=0.2, glove_trainable=False, summary=True):
+    maxlen = MAXLEN[prompt]
+    maxwords = MAXWORDLEN
+    input_word = Input(shape=(maxlen, maxwords,), dtype='int32')
+    x = Reshape((maxlen * maxwords,))(input_word)
+    emb = Embedding(input_dim=vocab_size, output_dim=emb_dim,
+                    trainable=glove_trainable, mask_zero=True, name='glove')(x)
+    x = ZeroMaskedEntries()(emb)
+    x = Dropout(drop_rate)(x)
+    x = Reshape((maxlen, maxwords, emb_dim))(x)
+    x = TimeDistributed(Convolution1D(
+        filters=100, kernel_size=5, padding='valid'), name='zcnn')(x)
+    x = TimeDistributed(FeiDongAttention(), name='avg_zcnn')(x)
+
+    x = LSTM(units=100, return_sequences=True, name='hz_lstm')(x)
+    x = FeiDongAttention(name='avg_hz_lstm')(x)
+    score = Dense(1, activation='sigmoid',
+                  name='output')(x)
+    model = Model(input_word, score)
+    model.compile(loss='mse', optimizer='rmsprop')
+    if summary:
+        model.summary()
+    return model
+
+
+class ZeroMaskedEntries(Layer):
+    """
+    This layer is called after an Embedding layer.
+    It zeros out all of the masked-out embeddings.
+    It also swallows the mask without passing it on.
+    You can change this to default pass-on behavior as follows:
+
+    def compute_mask(self, x, mask=None):
+        if not self.mask_zero:
+            return None
+        else:
+            return K.not_equal(x, 0)
+    """
+
+    def __init__(self, **kwargs):
+        self.support_mask = True
+        super(ZeroMaskedEntries, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        self.output_dim = input_shape[1]
+        self.repeat_dim = input_shape[2]
+
+    def call(self, x, mask=None):
+        mask = K.cast(mask, 'float32')
+        mask = K.repeat(mask, self.repeat_dim)
+        mask = K.permute_dimensions(mask, (0, 2, 1))
+        return x * mask
+
+    def compute_mask(self, input_shape, input_mask=None):
+        return None
+
+
+class FeiDongAttention(Layer):
+    def __init__(self, op='attsum', activation='tanh', init_stdev=0.01, return_attention=False, **kwargs):
+        self.supports_masking = True
+        self.op = op
+        self.activation = activation
+        self.init_stdev = init_stdev
+        self.return_attention = return_attention
+        super(FeiDongAttention, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        init_val_v = (np.random.randn(
+            input_shape[2]) * self.init_stdev).astype(K.floatx())
+        self.att_v = K.variable(init_val_v, name='att_v')
+        init_val_W = (np.random.randn(
+            input_shape[2], input_shape[2]) * self.init_stdev).astype(K.floatx())
+        self.att_W = K.variable(init_val_W, name='att_W')
+        self.trainable_weights = [self.att_v, self.att_W]
+
+    def call(self, x, mask=None):
+        y = K.dot(x, self.att_W)
+        weights = tf.tensordot(self.att_v, K.tanh(y), axes=[0, 2])
+        weights = K.softmax(weights)
+
+        out = x * \
+            K.permute_dimensions(K.repeat(weights, x.shape[2]), [0, 2, 1])
+        # print(out.shape)
+        out_sum = K.sum(out, axis=1, keepdims=False)
+        print(out_sum.shape)
+        out_sum = K.cast(out_sum, K.floatx())
+        if self.return_attention:
+            return weights
+        else:
+            return out_sum
+
+    def compute_output_shape(self, input_shape):
+        if self.return_attention:
+            return (input_shape[0], input_shape[1])
+        else:
+            return (input_shape[0], input_shape[2])
+
+    def compute_mask(self, x, mask):
+        return None
+
+    # def get_config(self):
+    #     config = {'op': self.op, 'activation': self.activation,
+    #               'init_stdev': self.init_stdev, 'return_attention': self.return_attention}
+    #     base_config = super(FeiDongAttention, self).get_config()
+    #     return dict(list(base_config.items()) + list(config.items()))

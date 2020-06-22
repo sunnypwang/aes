@@ -2,6 +2,11 @@ import numpy as np
 import pandas as pd
 import re
 from nltk.tokenize import sent_tokenize, word_tokenize
+import json
+import collections
+from keras.preprocessing.sequence import pad_sequences
+
+import os
 
 import utils
 
@@ -11,6 +16,7 @@ augment_set = ['no_art', 'no_conj', 'add_and-0.1', 'swap_word-0.05',
 
 # MAXLEN = [-1, 70, 88, 22, 23, 24, 20, 67, 97]     # Max
 MAXLEN = [-1, 47, 44, 14, 10, 15, 16, 32, 79]       # 1.5IQR Max
+MAXWORDLEN = 50
 
 PAD_SENT_TOKEN = ''
 
@@ -70,12 +76,12 @@ def clean_text(text):
     return text
 
 
-def tokenize_text(text):
+def tokenize(text):
     '''Word tokenize using NLTK word_tokenize'''
     tokens = word_tokenize(text)
     for index, token in enumerate(tokens):
         if token == '@' and (index+1) < len(tokens):
-            tokens[index+1] = '@' + tokens[index+1]
+            tokens[index+1] = '@' + re.sub('[0-9]+.*', '', tokens[index+1])
             tokens.pop(index)
     return tokens
 
@@ -86,15 +92,106 @@ def sentenize(text):
     return sents
 
 
+def load_glove_embedding(path, vocab, emb_dim=50):
+    scale = np.sqrt(3.0 / emb_dim)
+    emb_matrix = np.empty((len(vocab), emb_dim))
+    emb_dict = {}
+    with open(path, 'r', encoding='utf-8') as f:
+        for line in f:
+            args = line.split()
+            word = args[0]
+            vec = args[1:]
+            emb_dict[word] = vec
+    oov = 0
+    for w in vocab:
+        if w in emb_dict:
+            emb = np.array(emb_dict[w])
+        else:
+            emb = np.random.uniform(-scale, scale, emb_dim)
+            oov += 1
+        emb_matrix[vocab[w]] = emb
+    print('OOV: ', oov/len(vocab))
+    del emb_dict
+    return emb_matrix
+
+
+def get_vocab(prompt, df=None, length=4000, features='essay'):
+    vocab_path = utils.mkpath('vocab')
+    file_path = os.path.join(vocab_path, '{}.vocab'.format(prompt))
+    if os.path.isfile(file_path):
+        with open(file_path, 'r') as f:
+            vocab = json.load(f)
+        assert type(vocab) == dict
+        print('load vocab from {}'.format(file_path))
+        return vocab
+
+    word_all = []
+    for essay in df[features]:
+        sents = sentenize(essay)
+        for sent in sents:
+            words = tokenize(sent)
+            word_all.extend(words)
+    print('word count:', len(word_all))
+    print('unique word count:', len(set(word_all)))
+
+    most_common = collections.Counter(word_all).most_common(length - 3)
+
+    vocab = {'<pad>': 0, '<unk>': 1, '<num>': 2}
+    for w, c in most_common:
+        vocab[w] = len(vocab)
+
+    # save as JSON
+    with open(file_path, 'w') as f:
+        json.dump(vocab, f)
+    print('save vocab to {}'.format(file_path))
+
+    return vocab
+
+
 # def compute_maxsen(df, prompt):
 #     maxx = 0
-#     for essay in df['essay']:
-#         essay = sentenize(essay)
+#     for essay in df['essay']:s
 #         if MAX_LEN[prompt] < len(essay):
 #             MAX_LEN[prompt] = len(essay)
 
+def word2idx(w, vocab):
+    if not w in vocab:
+        return vocab['<unk>']
+    return vocab[w]
 
-def prepare_elmo_features(df, prompt, features='essay', labels='domain1_score', x_only=False, pad=True, y_only=False, norm=True, augment=None, rnd=None):
+
+def prepare_glove_features(df, prompt, vocab=None, features='essay', labels='domain1_score', x_only=False, pad=True, y_only=False, norm=True, augment=None, rnd=None):
+    assert not (x_only and y_only)
+    if not y_only:
+        X = np.zeros((len(df), MAXLEN[prompt], MAXWORDLEN), dtype=int)
+        # length = []
+        if not vocab:
+            vocab = get_vocab(df, prompt)
+        for i, essay in enumerate(df[features]):
+            sents = sentenize(essay)
+            if augment:
+                sents = make_augment(sents, augment, rnd)
+            sent_idxs = []
+            for sent in sents:
+                words = tokenize(sent)
+                sent_idxs.append([word2idx(w, vocab) for w in words])
+                # length.append(len(sent_idxs))
+            if pad:
+                sent_idxs = pad_sequences(
+                    sent_idxs, maxlen=MAXWORDLEN, dtype=object, padding='post', truncating='post', value=0)
+            X[i, :len(sent_idxs)] = sent_idxs[:MAXLEN[prompt]]
+        if x_only:
+            return X
+    if not x_only:
+        Y = np.array(df[labels].tolist())
+        if norm:
+            Y = normalize_score(Y, prompt)
+        if y_only:
+            return Y
+    return X, Y
+
+
+def prepare_elmo_features(df, prompt, vocab=None, features='essay', labels='domain1_score', x_only=False, pad=True, y_only=False, norm=True, augment=None, rnd=None):
     assert not (x_only and y_only)
     if not y_only:
         X = []
@@ -107,7 +204,6 @@ def prepare_elmo_features(df, prompt, features='essay', labels='domain1_score', 
                 X.append(sents)
         X = np.array(X)
         if pad:
-            from keras.preprocessing.sequence import pad_sequences
             X = pad_sequences(X, maxlen=MAXLEN[prompt], dtype=object,
                               padding='post', truncating='post', value=PAD_SENT_TOKEN)[:, :, None]
         if x_only:
@@ -140,6 +236,30 @@ def load_elmo_features(prompt, suffix=None, fold=1, **kwargs):
         data, prompt, **kwargs)
 
 
+def prepare_features(model_name, **kwargs):
+    if model_name.startswith('elmo'):
+        return prepare_elmo_features(**kwargs)
+    elif model_name.startswith('glove'):
+        return prepare_glove_features(**kwargs)
+
+
+def gen(model_name, prompt, df, vocab=None, batch_size=1, test=False, shuffle=True, **kwargs):
+    data = df.copy()
+    while True:
+        if shuffle:
+            data = data.sample(frac=1).reset_index(drop=True)
+        for i in range(0, len(data), batch_size):
+            j = min(len(data), i+batch_size)
+            if test:
+                x = prepare_features(model_name,
+                                     df=data[i:j], prompt=prompt, vocab=vocab, x_only=True, **kwargs)
+                yield x
+            else:
+                x, y = prepare_features(model_name,
+                                        df=data[i:j], prompt=prompt, vocab=vocab, **kwargs)
+                yield x, y
+
+
 def elmo_gen(prompt, df, batch_size=1, test=False, shuffle=True, **kwargs):
     data = df.copy()
     while True:
@@ -156,15 +276,15 @@ def elmo_gen(prompt, df, batch_size=1, test=False, shuffle=True, **kwargs):
                 yield x, y
 
 
-def augment_gen(prompt, test_df, batch_size=1, augment=None, **kwargs):
+def augment_gen(model_name, prompt, test_df, vocab=None, batch_size=1, augment=None, **kwargs):
     data = test_df.copy()
     rnd = np.random.RandomState(1)
     while True:
         for i in range(0, len(data), batch_size):
             j = min(len(data), i+batch_size)
 
-            x = prepare_elmo_features(
-                data[i:j], prompt, x_only=True, augment=augment, rnd=rnd, **kwargs)
+            x = prepare_features(model_name,
+                                 df=data[i:j], prompt=prompt, vocab=vocab, x_only=True, augment=augment, rnd=rnd, **kwargs)
             yield x
 
 
