@@ -63,12 +63,13 @@ def permute(x):
     return tf.transpose(x, perm=[1, 0, 2])
 
 
-def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mask=True, lstm_units=100, summary=True):
+def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mask=True, lstm_units=100, drop_rate=0.5, summary=True):
     maxlen = MAXLEN[prompt]
     elmo = ElmoEmbeddingLayer(maxlen, trainable=elmo_trainable)
 
     input_text = Input(shape=(maxlen, 1), dtype=tf.string)
     embedding = elmo(input_text)
+    embedding = Dropout(drop_rate)(embedding)
     if use_mask:
         embedding = Masking(mask_value=0.0)(embedding)
     if not only_elmo:
