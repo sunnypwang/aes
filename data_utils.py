@@ -199,16 +199,10 @@ def word2idx(w, vocab):
     return vocab[w]
 
 
-# mmax = [-1, 0, 0, 0, 0, 0, 0, 0, 0]
-
-
 def prepare_glove_features(df, prompt, vocab=None, features='essay', labels='domain1_score', x_only=False, pad=True, split_long_sent=False, y_only=False, norm=True, augment=None, rnd=None):
     assert not (x_only and y_only)
     if not y_only:
         X = np.zeros((len(df), MAXLEN[prompt], MAXWORDLEN), dtype=int)
-        # X = []
-        # length = []
-
         if not vocab:
             vocab = get_vocab(prompt, df)
         for i, essay in enumerate(df[features]):
@@ -224,18 +218,13 @@ def prepare_glove_features(df, prompt, vocab=None, features='essay', labels='dom
                         sent_idxs.append([word2idx(w, vocab)
                                           for w in word_tokens])
                 else:
-                    # sent_idxs.append([word2idx(w, vocab) for w in words])
-                    sent_idxs.append(words)
-                # length.append(len(sent_idxs))
-            # if len(sents) > mmax[prompt]:
-            #     mmax[prompt] = len(sents)
-            # if len(sent_idxs) != len(sents):
-            #     print(prompt, len(sents), len(sent_idxs))
+                    sent_idxs.append([word2idx(w, vocab) for w in words])
+
             if pad:
                 sent_idxs = pad_sequences(
                     sent_idxs, maxlen=MAXWORDLEN, dtype=object, padding='post', truncating='post', value=0)
-            X[i, :len(sent_idxs)] = sent_idxs[:MAXLEN[prompt]]
-            # X.append(sent_idxs)
+            # print(sent_idxs.shape == X[i, :len(sent_idxs)].shape)
+            X[i, :len(sent_idxs)] = sent_idxs
         if x_only:
             return X
     if not x_only:
