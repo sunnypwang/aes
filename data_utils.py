@@ -14,8 +14,8 @@ augment_set = ['no_art', 'no_conj', 'add_and-0.1', 'swap_word-0.05',
                'no_first_sent', 'no_last_sent', 'no_longest_sent', 'reverse_sent']
 
 
-# MAXLEN = [-1, 70, 88, 22, 23, 24, 20, 67, 97]     # Max
-MAXLEN = [-1, 47, 44, 14, 10, 15, 16, 32, 79]       # 1.5IQR Max
+MAXLEN = [-1, 70, 88, 22, 23, 24, 20, 67, 97]     # Max
+# MAXLEN = [-1, 47, 44, 14, 10, 15, 16, 32, 79]       # 1.5IQR Max
 MAXWORDLEN = 50
 
 PAD_SENT_TOKEN = ''
@@ -92,6 +92,45 @@ def sentenize(text):
     return sents
 
 
+def shorten_sentence(tokens):
+    if len(tokens) <= MAXWORDLEN:
+        return [tokens]
+
+    # Step 1: split sentence based on keywords
+    # split_keywords = ['because', 'but', 'so', 'then', 'You', 'He', 'She', 'We', 'It', 'They', 'Your', 'His', 'Her']
+    split_keywords = ['because', 'but', 'so', 'then']
+    k_indexes = [i for i, key in enumerate(tokens) if key in split_keywords]
+    processed_tokens = []
+    if not k_indexes:
+        num = len(tokens) // MAXWORDLEN
+        k_indexes = [(i+1)*MAXWORDLEN for i in range(num)]
+
+    if len(tokens[:k_indexes[0]]) > 0:
+        processed_tokens.append(tokens[:k_indexes[0]])
+    len_k = len(k_indexes)
+    for j in range(len_k-1):
+        processed_tokens.append(tokens[k_indexes[j]:k_indexes[j+1]])
+    processed_tokens.append(tokens[k_indexes[-1]:])
+
+    # Step 2: split sentence to no more than MAXWORDLEN
+    # if there are still sentences whose length exceeds MAXWORDLEN
+    new_tokens = []
+    for token in processed_tokens:
+        if len(token) > MAXWORDLEN:
+            num = len(token) // MAXWORDLEN
+            s_indexes = [(i+1)*MAXWORDLEN for i in range(num)]
+            len_s = len(s_indexes)
+            if len(token[:s_indexes[0]]) > 0:
+                new_tokens.append(token[0:s_indexes[0]])
+            for j in range(len_s-1):
+                new_tokens.append(token[s_indexes[j]:s_indexes[j+1]])
+            new_tokens.append(token[s_indexes[-1]:])
+        else:
+            new_tokens.append(token)
+    # print('before', len(tokens), 'after', [len(x) for x in new_tokens])
+    return new_tokens
+
+
 def load_glove_embedding(path, vocab, emb_dim=50):
     scale = np.sqrt(3.0 / emb_dim)
     emb_matrix = np.empty((len(vocab), emb_dim))
@@ -160,13 +199,18 @@ def word2idx(w, vocab):
     return vocab[w]
 
 
-def prepare_glove_features(df, prompt, vocab=None, features='essay', labels='domain1_score', x_only=False, pad=True, y_only=False, norm=True, augment=None, rnd=None):
+# mmax = [-1, 0, 0, 0, 0, 0, 0, 0, 0]
+
+
+def prepare_glove_features(df, prompt, vocab=None, features='essay', labels='domain1_score', x_only=False, pad=True, split_long_sent=False, y_only=False, norm=True, augment=None, rnd=None):
     assert not (x_only and y_only)
     if not y_only:
         X = np.zeros((len(df), MAXLEN[prompt], MAXWORDLEN), dtype=int)
+        # X = []
         # length = []
+
         if not vocab:
-            vocab = get_vocab(df, prompt)
+            vocab = get_vocab(prompt, df)
         for i, essay in enumerate(df[features]):
             sents = sentenize(essay)
             if augment:
@@ -174,12 +218,24 @@ def prepare_glove_features(df, prompt, vocab=None, features='essay', labels='dom
             sent_idxs = []
             for sent in sents:
                 words = tokenize(sent)
-                sent_idxs.append([word2idx(w, vocab) for w in words])
+                if split_long_sent:
+                    split_list = shorten_sentence(words)
+                    for word_tokens in split_list:
+                        sent_idxs.append([word2idx(w, vocab)
+                                          for w in word_tokens])
+                else:
+                    # sent_idxs.append([word2idx(w, vocab) for w in words])
+                    sent_idxs.append(words)
                 # length.append(len(sent_idxs))
+            # if len(sents) > mmax[prompt]:
+            #     mmax[prompt] = len(sents)
+            # if len(sent_idxs) != len(sents):
+            #     print(prompt, len(sents), len(sent_idxs))
             if pad:
                 sent_idxs = pad_sequences(
                     sent_idxs, maxlen=MAXWORDLEN, dtype=object, padding='post', truncating='post', value=0)
             X[i, :len(sent_idxs)] = sent_idxs[:MAXLEN[prompt]]
+            # X.append(sent_idxs)
         if x_only:
             return X
     if not x_only:
