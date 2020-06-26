@@ -199,7 +199,7 @@ def word2idx(w, vocab):
     return vocab[w]
 
 
-def prepare_glove_features(df, prompt, vocab=None, features='essay', labels='domain1_score', x_only=False, pad=True, split_long_sent=False, y_only=False, norm=True, augment=None, rnd=None):
+def prepare_glove_features(df, prompt, vocab=None, features='essay', labels='domain1_score', x_only=False, pad=True, split_long_sent=True, y_only=False, norm=True, augment=None, rnd=None):
     assert not (x_only and y_only)
     if not y_only:
         X = np.zeros((len(df), MAXLEN[prompt], MAXWORDLEN), dtype=int)
