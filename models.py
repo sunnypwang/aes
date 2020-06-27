@@ -161,7 +161,7 @@ def build_glove_model(prompt, vocab_size, emb_matrix, maxwords=50, emb_dim=50, d
     maxwords = MAXWORDLEN
     input_word = Input(shape=(maxlen, maxwords,), dtype='int32')
     x = Reshape((maxlen * maxwords,))(input_word)
-    emb = Embedding(input_dim=vocab_size, output_dim=emb_dim,
+    emb = Embedding(input_dim=vocab_size, output_dim=emb_dim, weights=[emb_matrix],
                     trainable=glove_trainable, mask_zero=True, name='glove')(x)
     x = ZeroMaskedEntries()(emb)
     x = Dropout(drop_rate)(x)
