@@ -17,10 +17,13 @@ parser.add_argument('epoch', type=int)
 parser.add_argument('name', type=str, help='model name for path handling')
 parser.add_argument('--bs', type=int, default=5)
 parser.add_argument('--fold', type=int, default=1)
-parser.add_argument('--ft', type=bool, default=False,
+parser.add_argument('--ft', action='store_true',
                     help='enable fine-tuning')
 parser.add_argument('--re', type=int, default=100,
                     help='recurrent size (elmo)')
+parser.add_argument('--drop', type=float, default=0.5,
+                    help='dropout')
+parser.add_argument('--mask', action='store_true')
 parser.add_argument('--augment', type=bool, default=True,
                     help='include augment during testing')
 args = parser.parse_args()
@@ -57,13 +60,13 @@ for p in prompts:
     if MODEL_NAME.startswith('elmo'):
         vocab = None
         model = models.build_elmo_model_full(
-            p,  elmo_trainable=args.ft, only_elmo=False, use_mask=False, lstm_units=args.re, drop_rate=0., summary=False)
+            p,  elmo_trainable=args.ft, use_mask=args.mask, lstm_units=args.re, drop_rate=args.drop, summary=False)
     elif MODEL_NAME.startswith('glove'):
         vocab = data_utils.get_vocab(p)
         glove_path = 'glove/glove.6B.50d.txt'
         emb_matrix = data_utils.load_glove_embedding(glove_path, vocab)
         model = models.build_glove_model(
-            p, len(vocab), emb_matrix, glove_trainable=False, summary=False)
+            p, len(vocab), emb_matrix, glove_trainable=args.ft, drop_rate=args.drop, summary=False)
 
     print('Loading weight :', weight)
     model.load_weights(weight)

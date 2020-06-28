@@ -15,10 +15,13 @@ parser.add_argument('epoch', type=int)
 parser.add_argument('name', type=str, help='model name for path handling')
 parser.add_argument('--bs', type=int, default=10)
 parser.add_argument('--fold', type=int, default=1)
-parser.add_argument('--ft', type=bool, default=False,
+parser.add_argument('--ft', action='store_true',
                     help='enable fine-tuning')
 parser.add_argument('--re', type=int, default=100,
                     help='recurrent size (elmo)')
+parser.add_argument('--drop', type=float, default=0.5,
+                    help='dropout')
+parser.add_argument('--mask', action='store_true')
 args = parser.parse_args()
 
 prompts = [args.prompt]
@@ -55,7 +58,7 @@ for p in prompts:
     from keras import backend as K
     K.clear_session()
     model = models.build_elmo_model_full(
-        p,  elmo_trainable=args.ft, only_elmo=False, use_mask=False, lstm_units=args.re, drop_rate=0.)
+        p,  elmo_trainable=args.ft, use_mask=args.mask, lstm_units=args.re, drop_rate=args.drop)
 
     if last_weight:
         print('Loading weight :', last_weight)
