@@ -57,7 +57,7 @@ for p in prompts:
     if MODEL_NAME.startswith('elmo'):
         vocab = None
         model = models.build_elmo_model_full(
-            p,  elmo_trainable=args.ft, only_elmo=False, use_mask=True, lstm_units=args.re, drop_rate=0.5, summary=False)
+            p,  elmo_trainable=args.ft, only_elmo=False, use_mask=False, lstm_units=args.re, drop_rate=0., summary=False)
     elif MODEL_NAME.startswith('glove'):
         vocab = data_utils.get_vocab(p)
         glove_path = 'glove/glove.6B.50d.txt'
