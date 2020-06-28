@@ -63,7 +63,7 @@ def permute(x):
     return tf.transpose(x, perm=[1, 0, 2])
 
 
-def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mask=True, lstm_units=100, drop_rate=0.5, summary=True):
+def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mask=True, lstm_units=100, drop_rate=None, summary=True):
     maxlen = MAXLEN[prompt]
     elmo = ElmoEmbeddingLayer(maxlen, trainable=elmo_trainable)
 
@@ -158,7 +158,7 @@ def get_model(prompt, fold, show_summary=False):
     return model
 
 
-def build_glove_model(prompt, vocab_size, emb_matrix, maxwords=50, emb_dim=50, drop_rate=0.5, glove_trainable=False, summary=True):
+def build_glove_model(prompt, vocab_size, emb_matrix, glove_trainable=False, drop_rate=None, maxwords=50, emb_dim=50, summary=True):
     maxlen = MAXLEN[prompt]
     maxwords = MAXWORDLEN
     input_word = Input(shape=(maxlen, maxwords,), dtype='int32')
