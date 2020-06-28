@@ -15,7 +15,7 @@ parser.add_argument('epoch', type=int)
 parser.add_argument('name', type=str, help='model name for path handling')
 parser.add_argument('--bs', type=int, default=10)
 parser.add_argument('--fold', type=int, default=1)
-parser.add_argument('--ft', type=bool, default=False,
+parser.add_argument('--ft', action='store_true',
                     help='enable fine-tuning')
 parser.add_argument('--re', type=int, default=100,
                     help='recurrent size (elmo)')
