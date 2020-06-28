@@ -1,8 +1,10 @@
 import sys
 import argparse
-from keras.callbacks import *
+
 import os
 import numpy as np
+from keras import backend as K
+from keras.callbacks import *
 
 import utils
 import data_utils
@@ -16,7 +18,9 @@ parser.add_argument('name', type=str, help='model name for path handling')
 parser.add_argument('--bs', type=int, default=5)
 parser.add_argument('--fold', type=int, default=1)
 parser.add_argument('--ft', type=bool, default=False,
-                    help='enable fine-tuning ELMo (elno_trainable)')
+                    help='enable fine-tuning')
+parser.add_argument('--re', type=int, default=100,
+                    help='recurrent size (elmo)')
 parser.add_argument('--augment', type=bool, default=True,
                     help='include augment during testing')
 args = parser.parse_args()
@@ -46,24 +50,33 @@ for p in prompts:
         continue
 
     test_df = data_utils.load_data(p, 'test')
+
     print(test_df.shape)
 
-    from keras import backend as K
     K.clear_session()
-    model = models.build_elmo_model_full(
-        p,  only_elmo=False, use_mask=True, summary=False)
+    if MODEL_NAME.startswith('elmo'):
+        vocab = None
+        model = models.build_elmo_model_full(
+            p,  elmo_trainable=args.ft, only_elmo=False, use_mask=True, lstm_units=args.re, drop_rate=0.5, summary=False)
+    elif MODEL_NAME.startswith('glove'):
+        vocab = data_utils.get_vocab(p)
+        glove_path = 'glove/glove.6B.50d.txt'
+        emb_matrix = data_utils.load_glove_embedding(glove_path, vocab)
+        model = models.build_glove_model(
+            p, len(vocab), emb_matrix, glove_trainable=False, summary=False)
 
     print('Loading weight :', weight)
     model.load_weights(weight)
 
-    test_gen = data_utils.elmo_gen(
-        p, test_df, batch_size=BATCH_SIZE, test=True, shuffle=False)
+    test_gen = data_utils.gen(MODEL_NAME,
+                              p, test_df, vocab, batch_size=BATCH_SIZE, test=True, shuffle=False)
+
     test_steps = np.ceil(len(test_df) / BATCH_SIZE)
 
     print(test_gen, test_steps)
 
-    y_true = data_utils.prepare_elmo_features(
-        test_df, p, y_only=True, norm=True)
+    y_true = data_utils.prepare_features(MODEL_NAME,
+                                         df=test_df, prompt=p, vocab=vocab, y_only=True, norm=True)
 
     y_pred = model.predict_generator(
         test_gen, steps=test_steps, verbose=1)
@@ -75,8 +88,8 @@ for p in prompts:
         print('Predicting on augment sets...')
         aug_pred = {}
         for augment in data_utils.augment_set:
-            aug_gen = data_utils.augment_gen(
-                p, test_df, batch_size=BATCH_SIZE, augment=augment)
+            aug_gen = data_utils.augment_gen(MODEL_NAME,
+                                             p, test_df, vocab=vocab, batch_size=BATCH_SIZE, augment=augment)
             aug_steps = np.ceil(len(test_df) / BATCH_SIZE)
 
             aug_pred[augment] = model.predict_generator(
@@ -89,4 +102,4 @@ for p in prompts:
             p, MODEL_NAME, EPOCH, y_true, y_pred, aug_pred)
 
 if len(prompts) == 8:
-    eval_utils.generate_summary(prompts, MODEL_NAME, EPOCH)
+    eval_utils.generate_summary(MODEL_NAME, EPOCH)
