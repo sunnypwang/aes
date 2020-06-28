@@ -69,7 +69,8 @@ def build_elmo_model_full(prompt, elmo_trainable=False, only_elmo=False, use_mas
 
     input_text = Input(shape=(maxlen, 1), dtype=tf.string)
     embedding = elmo(input_text)
-    embedding = Dropout(drop_rate)(embedding)
+    if drop_rate > 0.:
+        embedding = Dropout(drop_rate)(embedding)
     if use_mask:
         embedding = Masking(mask_value=0.0)(embedding)
     if not only_elmo:
