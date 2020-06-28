@@ -18,6 +18,8 @@ parser.add_argument('--bs', type=int, default=10)
 parser.add_argument('--fold', type=int, default=1)
 parser.add_argument('--ft', type=bool, default=False,
                     help='enable fine-tuning')
+parser.add_argument('--drop', type=float, default=0.5,
+                    help='dropout')
 args = parser.parse_args()
 
 prompts = [args.prompt]
@@ -57,7 +59,7 @@ for p in prompts:
 
     K.clear_session()
     model = models.build_glove_model(
-        p, len(vocab), emb_matrix, glove_trainable=args.ft)
+        p, len(vocab), emb_matrix, glove_trainable=args.ft, drop_rate=args.drop)
 
     if last_weight:
         print('Loading weight :', last_weight)
