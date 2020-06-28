@@ -19,6 +19,8 @@ parser.add_argument('--bs', type=int, default=5)
 parser.add_argument('--fold', type=int, default=1)
 parser.add_argument('--ft', type=bool, default=False,
                     help='enable fine-tuning')
+parser.add_argument('--re', type=int, default=100,
+                    help='recurrent size (elmo)')
 parser.add_argument('--augment', type=bool, default=True,
                     help='include augment during testing')
 args = parser.parse_args()
@@ -55,7 +57,7 @@ for p in prompts:
     if MODEL_NAME.startswith('elmo'):
         vocab = None
         model = models.build_elmo_model_full(
-            p,  only_elmo=False, use_mask=True, summary=False)
+            p,  elmo_trainable=args.ft, only_elmo=False, use_mask=True, lstm_units=args.re, drop_rate=0.5, summary=False)
     elif MODEL_NAME.startswith('glove'):
         vocab = data_utils.get_vocab(p)
         glove_path = 'glove/glove.6B.50d.txt'

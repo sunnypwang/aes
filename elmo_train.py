@@ -12,11 +12,13 @@ import models
 parser = argparse.ArgumentParser()
 parser.add_argument('prompt', type=int, help='-1 for all prompts')
 parser.add_argument('epoch', type=int)
-parser.add_argument('--bs', type=int, default=5)
+parser.add_argument('name', type=str, help='model name for path handling')
+parser.add_argument('--bs', type=int, default=10)
 parser.add_argument('--fold', type=int, default=1)
 parser.add_argument('--ft', type=bool, default=False,
-                    help='enable fine-tuning ELMo (elno_trainable)')
-parser.add_argument('--gen-augment', type=bool, default=False)
+                    help='enable fine-tuning')
+parser.add_argument('--re', type=int, default=100,
+                    help='recurrent size (elmo)')
 args = parser.parse_args()
 
 prompts = [args.prompt]
@@ -25,7 +27,7 @@ if args.prompt == -1:
 
 
 BATCH_SIZE = args.bs
-MODEL_NAME = 'elmo-fw'
+MODEL_NAME = args.name
 
 print(args)
 print('ALL PROMPTS :', prompts)
@@ -53,15 +55,16 @@ for p in prompts:
     from keras import backend as K
     K.clear_session()
     model = models.build_elmo_model_full(
-        p,  elmo_trainable=args.ft, only_elmo=False, use_mask=True)
+        p,  elmo_trainable=args.ft, only_elmo=False, use_mask=True, lstm_units=args.re, drop_rate=0.5)
 
     if last_weight:
         print('Loading weight :', last_weight)
         model.load_weights(last_weight)
 
-    train_gen = data_utils.elmo_gen(p, train_df, batch_size=BATCH_SIZE)
-    val_gen = data_utils.elmo_gen(
-        p, val_df, batch_size=BATCH_SIZE, shuffle=False)
+    train_gen = data_utils.gen(
+        MODEL_NAME, p, train_df, batch_size=BATCH_SIZE)
+    val_gen = data_utils.gen(MODEL_NAME,
+                             p, val_df, batch_size=BATCH_SIZE, shuffle=False)
 
     train_steps = np.ceil(len(train_df) / BATCH_SIZE)
     val_steps = np.ceil(len(val_df) / BATCH_SIZE)
@@ -71,7 +74,7 @@ for p in prompts:
     callbacks = [ModelCheckpoint(os.path.join(weight_path, 'weight.{}_{}_{{epoch:02d}}_{{val_loss:.4f}}.h5'.format(MODEL_NAME, p)), save_weights_only=True, period=1),
                  CSVLogger(os.path.join(
                      weight_path, 'history.csv'), append=True),
-                 eval_utils.EvaluateCallback(p, val_df, MODEL_NAME, BATCH_SIZE)]
+                 eval_utils.EvaluateCallback(p, val_df, MODEL_NAME, batch_size=BATCH_SIZE)]
     model.fit_generator(train_gen, steps_per_epoch=train_steps,
                         validation_data=val_gen, validation_steps=val_steps,
                         epochs=args.epoch, initial_epoch=last_epoch,
